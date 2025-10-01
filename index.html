@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Pizza Finance Tool</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    h1 { color: #d9534f; text-align: center; }
+    .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    label { font-weight: bold; }
+    input, select, button { margin-top: 10px; width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #d9534f; color: #fff; cursor: pointer; margin-top: 15px; }
+    button:hover { background: #c9302c; }
+    pre { background: #222; color: #eee; padding: 15px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍕 AI Pizza Finance Tool</h1>
+    <p>Enter your money and risk level. Get your <b>Safe</b> vs <b>Spicy</b> pizza portfolio!</p>
+
+    <label for="amount">Investment Amount ($):</label>
+    <input type="number" id="amount" placeholder="e.g. 5000">
+
+    <label for="risk">Risk Preference:</label>
+    <select id="risk">
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+    </select>
+
+    <label for="apikey">OpenAI API Key:</label>
+    <input type="password" id="apikey" placeholder="Paste your API key">
+
+    <button onclick="getPortfolio()">Get Portfolio</button>
+
+    <h2>Result:</h2>
+    <pre id="output">Waiting for input...</pre>
+  </div>
+
+  <script>
+    async function getBTCPrice() {
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+      const data = await res.json();
+      return data.bitcoin.usd;
+    }
+
+    async function getPortfolio() {
+      const amount = document.getElementById("amount").value;
+      const risk = document.getElementById("risk").value;
+      const apiKey = document.getElementById("apikey").value;
+      const output = document.getElementById("output");
+      output.textContent = "Thinking... 🍕";
+
+      if (!amount || !risk || !apiKey) {
+        output.textContent = "❌ Please fill in all fields.";
+        return;
+      }
+
+      const btcPrice = await getBTCPrice();
+
+      const prompt = `
+      You are a funny but smart financial advisor who only explains investments using pizza toppings.
+
+      The user has $${amount} and their risk preference is "${risk}".
+
+      Create two pizza portfolio scenarios:
+      1. Safe Pizza (conservative allocation)
+      2. Spicy Pizza (higher-risk allocation)
+
+      Use these toppings:
+      - Pepperoni = Stocks
+      - Cheese = Bonds
+      - Pineapple = Crypto
+      - Crust = Savings
+
+      Rules:
+      - Output in strict JSON
+      - Include percentage allocations for each topping
+      - Include a short funny explanation
+      - Mention live Bitcoin price = $${btcPrice}
+      `;
+
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8
+          })
+        });
+
+        const data = await response.json();
+        output.textContent = data.choices[0].message.content;
+      } catch (err) {
+        output.textContent = "⚠️ Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
