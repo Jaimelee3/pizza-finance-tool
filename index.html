@@ -1,246 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AI Pizza Finance Tool</title>
+  <meta charset="utf-8" />
+  <title>🍕 AI Pizza Finance Tool</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --accent:#c85151; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f5f5f5; margin:0; }
-    .wrap { max-width: 760px; margin: 32px auto; padding: 0 16px; }
-    .card { background:#fff; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.06); padding: 20px; }
-    h1 { margin: 0 0 12px; text-align:center; }
-    p.hint { color:#555; text-align:center; margin-top: 4px; }
-    label { display:block; margin-top:14px; font-weight:600; }
-    input, select, button { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #d7d7d7; font-size:16px; }
-    input:focus, select:focus { outline:2px solid #e8b3b3; border-color:#e8b3b3; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    button { margin-top:16px; background: var(--accent); color:white; border:none; font-weight:700; cursor:pointer; }
-    button:hover { filter: brightness(.95); }
-    .out { margin-top:18px; background:#111; color:#eee; border-radius:10px; padding:16px; overflow:auto; white-space:pre-wrap; }
-    .warn { background:#fff7e6; border:1px solid #ffd27b; color:#7a5200; padding:10px 12px; border-radius:8px; margin-top:12px; }
-    .muted { color:#666; font-size:14px; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#ffe3e3; color:#7a1f1f; font-size:12px; margin-left:6px; }
-    .checkbox { display:flex; align-items:center; gap:8px; margin-top:10px; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
+    .wrap { max-width: 700px; margin: 40px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+    h1 { text-align: center; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input, select, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin-top: 6px; }
+    button { background: #c85151; color: #fff; font-weight: bold; cursor: pointer; }
+    button:hover { filter: brightness(0.95); }
+    .result { margin-top: 20px; background: #111; color: #eee; padding: 16px; border-radius: 8px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>🍕 AI Pizza Finance Tool</h1>
-      <p class="hint">Safe vs Spicy portfolios with a side of pineapple (crypto) 🍍</p>
+<div class="wrap">
+  <div class="card">
+    <h1>🍕 AI Pizza Finance Tool</h1>
+    <label for="amount">Investment Amount ($)</label>
+    <input id="amount" type="number" placeholder="e.g., 5000" min="1" />
 
-      <div class="row">
-        <div>
-          <label for="amount">Investment Amount ($)</label>
-          <input type="number" id="amount" placeholder="e.g., 5000" min="1" />
-        </div>
-        <div>
-          <label for="risk">Risk Preference</label>
-          <select id="risk">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-          </select>
-        </div>
-      </div>
+    <label for="risk">Risk Preference</label>
+    <select id="risk">
+      <option value="low">Low</option>
+      <option value="medium" selected>Medium</option>
+      <option value="high">High</option>
+    </select>
 
-      <label for="apikey">OpenAI API Key <span class="pill">starts with “sk-”</span></label>
-      <input type="password" id="apikey" placeholder="Paste your API key" />
+    <button id="go">Get Portfolio</button>
 
-      <div class="checkbox">
-        <input type="checkbox" id="demoMode" />
-        <label for="demoMode" class="muted">Demo mode (no API) – generates a local example</label>
-      </div>
-
-      <button id="goBtn">Get Portfolio</button>
-
-      <div id="advice" class="warn" style="display:none;"></div>
-
-      <h2 style="margin-top:20px;">Result:</h2>
-      <div id="pretty"></div>
-      <div id="output" class="out">Waiting for input…</div>
-
-      <p class="muted" style="margin-top:10px;">
-        Heads-up: Some browsers block direct API calls from local files (CORS). If you see a network/CORS error,
-        serve the file with a tiny local server or use a simple proxy (e.g., an n8n webhook) and keep your key private.
-      </p>
-    </div>
+    <div id="output" class="result">Waiting for input…</div>
   </div>
+</div>
 
-  <script>
-    const goBtn   = document.getElementById("goBtn");
-    const output  = document.getElementById("output");
-    const pretty  = document.getElementById("pretty");
-    const advice  = document.getElementById("advice");
+<script>
+  // 👇 Replace this with your actual n8n Production webhook URL
+  const WEBHOOK_URL = "https://jaimelee3.app.n8n.cloud/webhook/pizza";
 
-    async function getBTCPrice() {
-      try {
-        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
-        if (!res.ok) throw new Error("CoinGecko responded with " + res.status);
-        const data = await res.json();
-        return data?.bitcoin?.usd ?? null;
-      } catch (e) {
-        return null; // continue without it
-      }
+  document.getElementById("go").addEventListener("click", async () => {
+    const amount = document.getElementById("amount").value.trim();
+    const risk = document.getElementById("risk").value;
+    const output = document.getElementById("output");
+
+    if (!amount || Number(amount) <= 0) {
+      output.textContent = "❌ Please enter a positive investment amount.";
+      return;
     }
 
-    function renderTable(json) {
-      if (!json || (typeof json !== "object")) return "";
-      const safe = json.safe_pizza || {};
-      const spicy = json.spicy_pizza || {};
-      const toList = (obj) =>
-        Object.keys(obj).map(k => `<div><strong>${k}</strong></div><div>${obj[k]}</div>`).join("");
+    output.textContent = "🍕 Thinking...";
 
-      return `
-        <div class="grid">
-          <div>
-            <h3>Safe Pizza</h3>
-            <div style="display:grid;grid-template-columns: 1fr 1fr; gap:6px;">
-              ${toList(safe)}
-            </div>
-          </div>
-          <div>
-            <h3>Spicy Pizza</h3>
-            <div style="display:grid;grid-template-columns: 1fr 1fr; gap:6px;">
-              ${toList(spicy)}
-            </div>
-          </div>
-        </div>
-        ${json.explanation ? `<p style="margin-top:12px;"><em>${json.explanation}</em></p>` : "" }
-      `;
+    // Build the prompt we send to n8n (n8n will forward it to OpenAI)
+    const prompt = `I have $${amount} and want a ${risk}-risk pizza investment portfolio.`;
+
+    try {
+      const resp = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (!resp.ok) throw new Error("Webhook error: " + resp.status);
+
+      const data = await resp.json();
+
+      // Show AI response
+      output.textContent = data.content || JSON.stringify(data, null, 2);
+    } catch (err) {
+      output.textContent = "⚠️ Error: " + err.message;
     }
-
-    function showAdvice(msg) {
-      advice.textContent = msg;
-      advice.style.display = "block";
-    }
-
-    function hideAdvice() {
-      advice.style.display = "none";
-    }
-
-    goBtn.addEventListener("click", async () => {
-      hideAdvice();
-      pretty.innerHTML = "";
-      output.textContent = "Thinking… 🍕";
-
-      const amount  = document.getElementById("amount").value.trim();
-      const risk    = document.getElementById("risk").value;
-      const apiKey  = document.getElementById("apikey").value.trim();
-      const demo    = document.getElementById("demoMode").checked;
-
-      if (!amount || Number(amount) <= 0) {
-        output.textContent = "❌ Please enter a positive dollar amount.";
-        return;
-      }
-
-      const btcPrice = await getBTCPrice();
-      const btcLine = btcPrice ? `Mention live Bitcoin price = $${btcPrice}` : `If BTC price unavailable, continue without it.`;
-
-      if (demo) {
-        // Local mock output (no API)
-        const mock = {
-          safe_pizza: { pepperoni: "30% (stocks)", cheese: "40% (bonds)", crust: "30% (savings)" },
-          spicy_pizza: { pepperoni: "60% (stocks)", pineapple: "30% (crypto)", crust: "10% (savings)" },
-          explanation: "Pepperoni = growth but volatile; cheese stabilizes; pineapple is spicy (crypto)."
-        };
-        pretty.innerHTML = renderTable(mock);
-        output.textContent = JSON.stringify(mock, null, 2);
-        showAdvice("Demo mode is ON. No API key used.");
-        return;
-      }
-
-      if (!apiKey || !apiKey.startsWith("sk-")) {
-        output.textContent = "❌ Please paste a valid OpenAI API key (starts with “sk-”).";
-        return;
-      }
-
-      const prompt = `
-You are a funny but smart financial advisor who only explains investments using pizza toppings.
-
-The user has $${amount} and their risk preference is "${risk}".
-
-Create two pizza portfolio scenarios:
-1. Safe Pizza (conservative allocation)
-2. Spicy Pizza (higher-risk allocation)
-
-Use toppings:
-- Pepperoni = Stocks
-- Cheese = Bonds
-- Pineapple = Crypto
-- Crust = Savings
-
-Rules:
-- Output STRICT JSON only (no backticks, no prose)
-- Keys: safe_pizza, spicy_pizza, explanation
-- Values for allocations must be percentages with labels, e.g., "40% (bonds)"
-- ${btcLine}
-`;
-
-      try {
-        const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7
-          })
-        });
-
-        // If the network/API failed, show the actual error
-        if (!resp.ok) {
-          let errText = resp.status + " " + resp.statusText;
-          try {
-            const errJson = await resp.json();
-            if (errJson?.error?.message) errText = errJson.error.message;
-          } catch {}
-          throw new Error(errText);
-        }
-
-        const data = await resp.json();
-
-        // Defensive checks so we don't crash on missing fields
-        const content = data?.choices?.[0]?.message?.content;
-        if (!content) {
-          throw new Error("Unexpected API response (no content).");
-        }
-
-        let parsed;
-        try {
-          parsed = JSON.parse(content);
-        } catch {
-          // Model returned prose; try to extract JSON fallback
-          const match = content.match(/\{[\s\S]*\}$/);
-          if (match) {
-            parsed = JSON.parse(match[0]);
-          } else {
-            throw new Error("Model did not return valid JSON.");
-          }
-        }
-
-        pretty.innerHTML = renderTable(parsed);
-        output.textContent = JSON.stringify(parsed, null, 2);
-      } catch (e) {
-        output.textContent = "⚠️ Error: " + e.message;
-
-        // Helpful hints for common issues
-        if (String(e.message).toLowerCase().includes("cors") ||
-            String(e.message).toLowerCase().includes("blocked by")) {
-          showAdvice("It looks like a CORS/network block from running the HTML file directly. Quick fix: serve it with a tiny local server (e.g., in the folder run “python3 -m http.server 8000” and open http://localhost:8000), or call OpenAI from a simple proxy (like an n8n webhook) so your key stays private.");
-        } else if (String(e.message).toLowerCase().includes("api key") ||
-                   String(e.message).toLowerCase().includes("unauthorized")) {
-          showAdvice("OpenAI rejected the key. Double-check you pasted a valid API key that starts with “sk-”, and that your account has billing enabled.");
-        } else {
-          hideAdvice();
-        }
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>
